@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESHKERE TRIP</title>
+<style>
+:root{--glass:rgba(12,17,22,.72);--line:rgba(255,255,255,.22);--txt:#f4f2ed;--accent:#ffb15b}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111;color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;inset:0;pointer-events:none;text-shadow:0 2px 5px #000}
+.top{position:absolute;top:18px;left:20px;padding:12px 15px;background:var(--glass);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(8px)}
+.brand{font-size:clamp(17px,2.4vw,25px);font-weight:900;letter-spacing:.12em}.sub{font-size:11px;opacity:.7;letter-spacing:.16em;margin-top:2px}
+.stats{position:absolute;right:20px;top:18px;display:flex;gap:8px}.stat{min-width:90px;padding:10px 12px;background:var(--glass);border:1px solid var(--line);border-radius:12px}.label{font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:.12em}.value{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+.bottom{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);text-align:center;width:min(92vw,760px)}
+.help{display:inline-block;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:10px 15px;font-size:12px;line-height:1.8}
+kbd{font:700 11px ui-monospace,monospace;padding:3px 6px;border:1px solid #ffffff55;border-radius:5px;background:#ffffff14}
+#speedo{position:absolute;bottom:20px;right:20px;width:112px;height:112px;border-radius:50%;border:3px solid #ffffff88;background:var(--glass);display:flex;flex-direction:column;align-items:center;justify-content:center}
+#speed{font-size:34px;font-weight:900;line-height:1}.unit{font-size:10px;opacity:.7;letter-spacing:.14em}
+#message{position:absolute;left:50%;top:24%;transform:translateX(-50%);font-size:14px;background:var(--glass);border:1px solid var(--line);padding:10px 15px;border-radius:10px;opacity:0;transition:opacity .2s}
+#err{display:none;position:fixed;inset:0;background:#111;color:#fff;padding:10vh 9vw;z-index:10;font-size:16px;line-height:1.6}#err h1{color:var(--accent)}
+@media(max-width:600px){.top{top:10px;left:10px}.stats{top:82px;left:10px;right:auto}.stat{min-width:74px;padding:7px 9px}.value{font-size:16px}#speedo{width:82px;height:82px;right:10px;bottom:10px}#speed{font-size:26px}.bottom{bottom:10px}.help{font-size:10px;padding:7px 9px;max-width:70vw}}
+</style>
+</head>
+<body>
+<div id="err"><h1>ESHKERE TRIP</h1><p id="errtext">Не удалось запустить 3D-сцену.</p><p>Проверь интернет-соединение и открой файл в актуальном Chrome, Edge или Firefox. Для локального файла браузеру нужен доступ к CDN Three.js.</p></div>
+<div id="hud">
+ <div class="top"><div class="brand">ESHKERE TRIP</div><div class="sub">ROAD TRIP PROTOTYPE · BUILD 02</div></div>
+ <div class="stats">
+  <div class="stat"><div class="label">Передача</div><div class="value" id="gear">N</div></div>
+  <div class="stat"><div class="label">Топливо</div><div class="value"><span id="fuel">78</span>%</div></div>
+  <div class="stat"><div class="label">Дистанция</div><div class="value"><span id="dist">0.0</span> км</div></div>
+ </div>
+ <div id="message"></div>
+ <div class="bottom"><div class="help"><kbd>W</kbd> газ &nbsp; <kbd>S</kbd> задний ход / тормоз &nbsp; <kbd>A</kbd><kbd>D</kbd> поворот &nbsp; <kbd>SPACE</kbd> тормоз &nbsp; <kbd>C</kbd> смена камеры &nbsp; <kbd>R</kbd> сброс</div></div>
+ <div id="speedo"><div id="speed">0</div><div class="unit">KM/H</div></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="document.getElementById('err').style.display='block';document.getElementById('errtext').textContent='Не загрузилась библиотека Three.js с CDN.'"></script>
+<script>
+(function(){
+'use strict';
+const err=document.getElementById('err');
+if(!window.THREE){err.style.display='block';return;}
+try {
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xf4a66e);
+scene.fog=new THREE.Fog(0xf4a66e,65,250);
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,500);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
+document.body.insertBefore(renderer.domElement,document.body.firstChild);
+scene.add(new THREE.HemisphereLight(0xb9d9ff,0x4b3328,1.25));
+const sunLight=new THREE.DirectionalLight(0xffd1a0,2.0);sunLight.position.set(-30,50,20);sunLight.castShadow=true;sunLight.shadow.mapSize.set(1024,1024);scene.add(sunLight);
+function mat(color,roughness=.8,metalness=0,emissive=null){return new THREE.MeshStandardMaterial({color,roughness,metalness,emissive:emissive||0x000000,emissiveIntensity:emissive?1.1:0})}
+const grass=mat(0x63724a),asphalt=mat(0x353638),line=mat(0xe8d8a7),concrete=mat(0xaaa39a),brick=mat(0xc5a58d),roof=mat(0x55565b),dark=mat(0x202329),red=mat(0xb92f27,.38,.25),glass= new THREE.MeshStandardMaterial({color:0x253c48,roughness:.25,metalness:.25}),rubber=mat(0x171719),rim=mat(0xb6b9b8,.3,.7),pink=new THREE.MeshStandardMaterial({color:0xff78c9,emissive:0xff3ca9,emissiveIntensity:1.8}),warm=new THREE.MeshStandardMaterial({color:0xffd49a,emissive:0xffa544,emissiveIntensity:1.1});
+function box(parent,w,h,d,material,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),grass);ground.rotation.x=-Math.PI/2;ground.position.y=-.13;ground.position.z=-100;ground.receiveShadow=true;ground.userData.ground=true;scene.add(ground);
+const road=box(scene,10,.12,340,asphalt,0,-.02,-150);road.userData.road=true;
+for(let z=7;z>-320;z-=10){const dash=box(scene,.13,.025,4.5,line,0,.055,z-3);dash.userData.scenery=true;}
+for(const x of [-5.25,5.25]){const edge=box(scene,.12,.05,340,concrete,x,.03,-150);edge.userData.road=true;}
+const buildings=[];
+for(let z=-20;z>-300;z-=27){for(const side of [-1,1]){
+ const group=new THREE.Group();scene.add(group);group.position.z=z+(Math.random()-.5)*7;group.userData.scenery=true;
+ const x=side*(10+Math.random()*7),w=7+Math.random()*5,h=8+Math.random()*9,d=9+Math.random()*5;
+ box(group,w,h,d,Math.random()>.5?brick:concrete,x,h/2-.1,0);
+ for(let floor=1;floor<h/2;floor++)for(let col=0;col<3;col++){
+  const wm=Math.random()>.7?pink:(Math.random()>.5?warm:glass);
+  box(group,.72,.9,.08,wm,x-w/2+.9+col*(w-1.7)/2,-h/2+floor*2.05+1,-d/2-.06);
+ }
+ box(group,w+.4,.35,d+.4,roof,x,h-.05,0);
+}}
+const treeMat=mat(0x294b36),trunk=mat(0x5b4030);
+for(let z=4;z>-310;z-=9)for(const side of [-1,1]){
+ const group=new THREE.Group();scene.add(group);group.position.z=z+Math.random()*4;group.userData.scenery=true;
+ const x=side*(7+Math.random()*4);
+ box(group,.35,2,.35,trunk,x,.8,0);
+ const cone=new THREE.Mesh(new THREE.ConeGeometry(1.5,3.6,6),treeMat);cone.position.set(x,3,0);cone.castShadow=true;group.add(cone);
+}
+for(let z=-8;z>-300;z-=24)for(const x of [-6.8,6.8]){
+ const group=new THREE.Group();scene.add(group);group.position.z=z;group.userData.scenery=true;
+ const pole=mat(0x34383c,.4,.7);box(group,.12,4,.12,pole,x,2,0);box(group,.8,.12,.15,pole,x+(x<0?.3:-.3),4,0);
+ const bulb=new THREE.Mesh(new THREE.SphereGeometry(.13,8,8),warm);bulb.position.set(x+(x<0?.6:-.6),3.9,0);group.add(bulb);
+}
+const sun=new THREE.Mesh(new THREE.SphereGeometry(7,24,16),new THREE.MeshBasicMaterial({color:0xffd08b}));sun.position.set(-27,22,-150);scene.add(sun);
+// car chassis group; world position updated by physics
+const car=new THREE.Group();scene.add(car);
+box(car,1.8,.48,3.7,red,0,.75,0);
+box(car,1.48,.68,1.75,red,0,1.28,-.28);
+box(car,1.35,.48,1.45,glass,0,1.36,-.28);
+box(car,.12,.08,1.5,dark,-.72,1.62,-.28);box(car,.12,.08,1.5,dark,.72,1.62,-.28);
+box(car,1.7,.13,.35,dark,0,.58,1.65);box(car,1.7,.13,.35,dark,0,.58,-1.65);
+for(const x of [-.96,.96])for(const z of [-1.18,1.18]){
+ const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.22,16),rubber);wheel.rotation.z=Math.PI/2;wheel.position.set(x,.48,z);wheel.castShadow=true;car.add(wheel);
+ const hub=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.235,12),rim);hub.rotation.z=Math.PI/2;hub.position.copy(wheel.position);car.add(hub);
+}
+for(const x of [-.58,.58]){const lamp=new THREE.Mesh(new THREE.BoxGeometry(.35,.2,.06),warm);lamp.position.set(x,.88,1.88);car.add(lamp)}
+const tailmat=mat(0xff2525,.3,0,0xff1010);for(const x of [-.62,.62])box(car,.3,.19,.06,tailmat,x,.86,-1.88);
+const dashboard=box(car,1.48,.25,.58,dark,0,1.25,1.12);
+const wheelGroup=new THREE.Group();wheelGroup.position.set(0,1.43,.8);car.add(wheelGroup);
+const steering=new THREE.Mesh(new THREE.TorusGeometry(.28,.035,8,24),dark);steering.rotation.x=.18;wheelGroup.add(steering);
+for(let a=0;a<3;a++){const spoke=box(wheelGroup,.035,.5,.035,rim,0,0,0);spoke.rotation.z=a*Math.PI/3;}
+const cockpit=new THREE.Group();camera.add(cockpit);
+box(cockpit,2.5,.35,.65,dark,0,-.72,-1.05);
+const hood=box(cockpit,2.1,.15,1.65,red,0,-.65,-2.05);
+const dash=box(cockpit,2.15,.3,.4,dark,0,-.38,-.72);
+const steering2=new THREE.Mesh(new THREE.TorusGeometry(.27,.035,8,24),dark);steering2.position.set(-.48,-.4,-.48);steering2.rotation.x=.25;cockpit.add(steering2);
+const spoke2=box(cockpit,.035,.45,.035,rim,-.48,-.4,-.48);spoke2.rotation.z=.3;
+camera.position.set(0,1.75,3.8);
+let speed=0,steer=0,yaw=0,travel=0,fuel=78,third=false,brakeLight=false,last=performance.now();
+const keys={};let msgTimer=0;
+function message(t){const el=document.getElementById('message');el.textContent=t;el.style.opacity=1;msgTimer=2.1;}
+addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyC'&&!e.repeat){third=!third;message(third?'Камера: снаружи':'Камера: из салона');}if(e.code==='KeyR'&&!e.repeat){speed=0;steer=0;yaw=0;travel=0;car.position.set(0,0,0);message('Машина сброшена на дорогу');}});
+addEventListener('keyup',e=>keys[e.code]=false);
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
+function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.04);last=now;
+ const gas=keys.KeyW||keys.ArrowUp,reverse=keys.KeyS||keys.ArrowDown,brake=keys.Space,turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0);
+ if(gas&&fuel>0)speed+=7.5*dt;
+ if(reverse)speed-=speed>1?14*dt:4.2*dt;
+ if(brake)speed*=Math.max(0,1-5.5*dt);
+ if(!gas&&!reverse&&!brake)speed*=Math.max(0,1-.48*dt);
+ speed=THREE.MathUtils.clamp(speed,-5,34);
+ steer=THREE.MathUtils.damp(steer,turn,.9,dt);
+ const steerStrength=Math.min(Math.abs(speed)/12,1);
+ yaw+=steer*steerStrength*1.15*dt*Math.sign(speed||1);
+ // Keep the car on the road; gentle verge resistance
+ const nextX=car.position.x+Math.sin(yaw)*Math.min(Math.abs(speed),18)*dt*.45;
+ if(Math.abs(nextX)<3.65)car.position.x=nextX;else{speed*=Math.max(0,1-3.2*dt);car.position.x=THREE.MathUtils.clamp(nextX,-3.65,3.65);}
+ car.rotation.y=yaw;travel+=Math.abs(speed)*dt;
+ fuel=Math.max(0,fuel-Math.abs(speed)*dt*.00085);
+ wheelGroup.rotation.z=-steer*.55;steering2.rotation.z=-steer*.55;
+ // Road and scenery flow toward the car while W is held, giving a clear forward-motion cue.
+ const flow=speed*dt*1.7;
+ scene.children.forEach(o=>{
+   if(o.userData.scenery){o.position.z+=flow;if(o.position.z>14)o.position.z-=330;}
+ });
+ road.position.z+=flow;if(road.position.z>20)road.position.z-=340;
+ scene.children.forEach(o=>{if(o.userData.road&&o!==road){o.position.z+=flow;if(o.position.z>14)o.position.z-=340;}});
+ ground.position.z+=flow*.15;if(ground.position.z>0)ground.position.z=-100;
+ // Camera follows road position; mild suspension bounce grows with speed.
+ const bounce=Math.sin(now*.018)*Math.min(Math.abs(speed)/150,.035);
+ if(third){camera.position.set(car.position.x-Math.sin(yaw)*7,4.2+bounce,5.8+Math.cos(yaw)*1.5);camera.lookAt(car.position.x,1,-8);cockpit.visible=false;}
+ else{camera.position.set(car.position.x,1.65+bounce,3.8);camera.rotation.set(0,yaw,0);cockpit.visible=true;}
+ // car body is shown in external view; cockpit geometry stays camera-local in first person
+ car.visible=third;
+ document.getElementById('speed').textContent=Math.round(Math.abs(speed)*3.6);
+ document.getElementById('fuel').textContent=Math.round(fuel);
+ document.getElementById('dist').textContent=(travel/1000).toFixed(1);
+ document.getElementById('gear').textContent= speed<-.3?'R':Math.abs(speed)<.5?'N':Math.abs(speed)<9?'1':Math.abs(speed)<17?'2':'3';
+ msgTimer-=dt;if(msgTimer<=0)document.getElementById('message').style.opacity=0;
+ // Small road motion illusion
+ renderer.render(scene,camera);
+}
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+animate(performance.now());
+} catch(e){document.getElementById('err').style.display='block';document.getElementById('errtext').textContent='Ошибка 3D: '+e.message;console.error(e);}
+})();
+</script>
+</body>
+</html>
