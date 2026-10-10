@@ -25,14 +25,14 @@ kbd{font:700 11px ui-monospace,monospace;padding:3px 6px;border:1px solid #fffff
 <body>
 <div id="err"><h1>ESHKERE TRIP</h1><p id="errtext">Не удалось запустить 3D-сцену.</p><p>Проверь интернет-соединение и открой файл в актуальном Chrome, Edge или Firefox. Для локального файла браузеру нужен доступ к CDN Three.js.</p></div>
 <div id="hud">
- <div class="top"><div class="brand">ESHKERE TRIP</div><div class="sub">ROAD TRIP PROTOTYPE · BUILD 02</div></div>
+ <div class="top"><div class="brand">ESHKERE TRIP</div><div class="sub">ROAD TRIP PROTOTYPE · BUILD 03 (DAMAGE SYSTEM)</div></div>
  <div class="stats">
   <div class="stat"><div class="label">Передача</div><div class="value" id="gear">N</div></div>
   <div class="stat"><div class="label">Топливо</div><div class="value"><span id="fuel">78</span>%</div></div>
-  <div class="stat"><div class="label">Дистанция</div><div class="value"><span id="dist">0.0</span> км</div></div>
+  <div class="stat"><div class="label">Прочность</div><div class="value"><span id="hp">100</span>%</div></div>
  </div>
  <div id="message"></div>
- <div class="bottom"><div class="help"><kbd>W</kbd> газ &nbsp; <kbd>S</kbd> задний ход / тормоз &nbsp; <kbd>A</kbd><kbd>D</kbd> поворот &nbsp; <kbd>SPACE</kbd> тормоз &nbsp; <kbd>C</kbd> смена камеры &nbsp; <kbd>R</kbd> сброс</div></div>
+ <div class="bottom"><div class="help"><kbd>W</kbd> газ &nbsp; <kbd>S</kbd> назад &nbsp; <kbd>A</kbd><kbd>D</kbd> руль &nbsp; <kbd>SPACE</kbd> стоп &nbsp; <kbd>C</kbd> камера &nbsp; <kbd>T</kbd> тест удара &nbsp; <kbd>E</kbd> ремонт</div></div>
  <div id="speedo"><div id="speed">0</div><div class="unit">KM/H</div></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="document.getElementById('err').style.display='block';document.getElementById('errtext').textContent='Не загрузилась библиотека Three.js с CDN.'"></script>
@@ -56,10 +56,12 @@ const sunLight=new THREE.DirectionalLight(0xffd1a0,2.0);sunLight.position.set(-3
 function mat(color,roughness=.8,metalness=0,emissive=null){return new THREE.MeshStandardMaterial({color,roughness,metalness,emissive:emissive||0x000000,emissiveIntensity:emissive?1.1:0})}
 const grass=mat(0x63724a),asphalt=mat(0x353638),line=mat(0xe8d8a7),concrete=mat(0xaaa39a),brick=mat(0xc5a58d),roof=mat(0x55565b),dark=mat(0x202329),red=mat(0xb92f27,.38,.25),glass= new THREE.MeshStandardMaterial({color:0x253c48,roughness:.25,metalness:.25}),rubber=mat(0x171719),rim=mat(0xb6b9b8,.3,.7),pink=new THREE.MeshStandardMaterial({color:0xff78c9,emissive:0xff3ca9,emissiveIntensity:1.8}),warm=new THREE.MeshStandardMaterial({color:0xffd49a,emissive:0xffa544,emissiveIntensity:1.1});
 function box(parent,w,h,d,material,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),grass);ground.rotation.x=-Math.PI/2;ground.position.y=-.13;ground.position.z=-100;ground.receiveShadow=true;ground.userData.ground=true;scene.add(ground);
 const road=box(scene,10,.12,340,asphalt,0,-.02,-150);road.userData.road=true;
 for(let z=7;z>-320;z-=10){const dash=box(scene,.13,.025,4.5,line,0,.055,z-3);dash.userData.scenery=true;}
 for(const x of [-5.25,5.25]){const edge=box(scene,.12,.05,340,concrete,x,.03,-150);edge.userData.road=true;}
+
 const buildings=[];
 for(let z=-20;z>-300;z-=27){for(const side of [-1,1]){
  const group=new THREE.Group();scene.add(group);group.position.z=z+(Math.random()-.5)*7;group.userData.scenery=true;
@@ -71,6 +73,7 @@ for(let z=-20;z>-300;z-=27){for(const side of [-1,1]){
  }
  box(group,w+.4,.35,d+.4,roof,x,h-.05,0);
 }}
+
 const treeMat=mat(0x294b36),trunk=mat(0x5b4030);
 for(let z=4;z>-310;z-=9)for(const side of [-1,1]){
  const group=new THREE.Group();scene.add(group);group.position.z=z+Math.random()*4;group.userData.scenery=true;
@@ -78,43 +81,126 @@ for(let z=4;z>-310;z-=9)for(const side of [-1,1]){
  box(group,.35,2,.35,trunk,x,.8,0);
  const cone=new THREE.Mesh(new THREE.ConeGeometry(1.5,3.6,6),treeMat);cone.position.set(x,3,0);cone.castShadow=true;group.add(cone);
 }
+
 for(let z=-8;z>-300;z-=24)for(const x of [-6.8,6.8]){
  const group=new THREE.Group();scene.add(group);group.position.z=z;group.userData.scenery=true;
  const pole=mat(0x34383c,.4,.7);box(group,.12,4,.12,pole,x,2,0);box(group,.8,.12,.15,pole,x+(x<0?.3:-.3),4,0);
  const bulb=new THREE.Mesh(new THREE.SphereGeometry(.13,8,8),warm);bulb.position.set(x+(x<0?.6:-.6),3.9,0);group.add(bulb);
 }
+
 const sun=new THREE.Mesh(new THREE.SphereGeometry(7,24,16),new THREE.MeshBasicMaterial({color:0xffd08b}));sun.position.set(-27,22,-150);scene.add(sun);
-// car chassis group; world position updated by physics
+
+// --- СИСТЕМА ПОВРЕЖДЕНИЙ МАШИНЫ ---
 const car=new THREE.Group();scene.add(car);
 box(car,1.8,.48,3.7,red,0,.75,0);
 box(car,1.48,.68,1.75,red,0,1.28,-.28);
 box(car,1.35,.48,1.45,glass,0,1.36,-.28);
 box(car,.12,.08,1.5,dark,-.72,1.62,-.28);box(car,.12,.08,1.5,dark,.72,1.62,-.28);
-box(car,1.7,.13,.35,dark,0,.58,1.65);box(car,1.7,.13,.35,dark,0,.58,-1.65);
+
+// Отдельные детали, которые могут отлетать
+const carParts = {
+ frontBumper: box(car,1.7,.13,.35,dark,0,.58,1.65),
+ rearBumper: box(car,1.7,.13,.35,dark,0,.58,-1.65),
+ leftHeadlight: (() => { const m = new THREE.Mesh(new THREE.BoxGeometry(.35,.2,.06),warm); m.position.set(-.58,.88,1.88); car.add(m); return m; })(),
+ rightHeadlight: (() => { const m = new THREE.Mesh(new THREE.BoxGeometry(.35,.2,.06),warm); m.position.set(.58,.88,1.88); car.add(m); return m; })()
+};
+
 for(const x of [-.96,.96])for(const z of [-1.18,1.18]){
  const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.22,16),rubber);wheel.rotation.z=Math.PI/2;wheel.position.set(x,.48,z);wheel.castShadow=true;car.add(wheel);
  const hub=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.235,12),rim);hub.rotation.z=Math.PI/2;hub.position.copy(wheel.position);car.add(hub);
 }
-for(const x of [-.58,.58]){const lamp=new THREE.Mesh(new THREE.BoxGeometry(.35,.2,.06),warm);lamp.position.set(x,.88,1.88);car.add(lamp)}
+
 const tailmat=mat(0xff2525,.3,0,0xff1010);for(const x of [-.62,.62])box(car,.3,.19,.06,tailmat,x,.86,-1.88);
 const dashboard=box(car,1.48,.25,.58,dark,0,1.25,1.12);
 const wheelGroup=new THREE.Group();wheelGroup.position.set(0,1.43,.8);car.add(wheelGroup);
 const steering=new THREE.Mesh(new THREE.TorusGeometry(.28,.035,8,24),dark);steering.rotation.x=.18;wheelGroup.add(steering);
 for(let a=0;a<3;a++){const spoke=box(wheelGroup,.035,.5,.035,rim,0,0,0);spoke.rotation.z=a*Math.PI/3;}
+
 const cockpit=new THREE.Group();camera.add(cockpit);
 box(cockpit,2.5,.35,.65,dark,0,-.72,-1.05);
 const hood=box(cockpit,2.1,.15,1.65,red,0,-.65,-2.05);
 const dash=box(cockpit,2.15,.3,.4,dark,0,-.38,-.72);
 const steering2=new THREE.Mesh(new THREE.TorusGeometry(.27,.035,8,24),dark);steering2.position.set(-.48,-.4,-.48);steering2.rotation.x=.25;cockpit.add(steering2);
 const spoke2=box(cockpit,.035,.45,.035,rim,-.48,-.4,-.48);spoke2.rotation.z=.3;
+
 camera.position.set(0,1.75,3.8);
-let speed=0,steer=0,yaw=0,travel=0,fuel=78,third=false,brakeLight=false,last=performance.now();
+
+let speed=0,steer=0,yaw=0,travel=0,fuel=78,carHP=100,third=false,last=performance.now();
 const keys={};let msgTimer=0;
+const detachedParts = []; // Список отлетевших деталей на дороге
+
 function message(t){const el=document.getElementById('message');el.textContent=t;el.style.opacity=1;msgTimer=2.1;}
-addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyC'&&!e.repeat){third=!third;message(third?'Камера: снаружи':'Камера: из салона');}if(e.code==='KeyR'&&!e.repeat){speed=0;steer=0;yaw=0;travel=0;car.position.set(0,0,0);message('Машина сброшена на дорогу');}});
+
+// Функция симуляции удара / отлета детали
+function triggerDamage() {
+  if (carHP <= 0) return;
+  carHP = Math.max(0, carHP - 25);
+  
+  // Выбираем случайную деталь из тех, что еще прикреплены к машине
+  const availableParts = Object.keys(carParts).filter(k => carParts[k] !== null);
+  if (availableParts.length > 0) {
+    const partKey = availableParts[Math.floor(Math.random() * availableParts.length)];
+    const mesh = carParts[partKey];
+    
+    // Получаем мировые координаты детали перед отрывом
+    const worldPos = new THREE.Vector3();
+    mesh.getWorldPosition(worldPos);
+    car.remove(mesh);
+    scene.add(mesh);
+    mesh.position.copy(worldPos);
+    
+    // Добавляем скорость и вращение отлетающей детали
+    detachedParts.push({
+      mesh: mesh,
+      velocity: new THREE.Vector3((Math.random() - .5) * 6, 4 + Math.random() * 4, -speed * 0.5 - 2),
+      rotSpeed: new THREE.Vector3(Math.random() * 10, Math.random() * 10, Math.random() * 10)
+    });
+    
+    carParts[partKey] = null;
+    message(`⚠️ Удар! Деталь (${partKey}) отлетела!`);
+  } else {
+    message('⚠️ Сильный удар! Машина трещит по швам!');
+  }
+}
+
+// Функция ремонта на остановке
+function repairCar() {
+  if (Math.abs(speed) > 0.5) {
+    message('Сначала остановитесь, чтобы починить машину!');
+    return;
+  }
+  
+  // Возвращаем все отлетевшие детали обратно на машину
+  detachedParts.forEach(item => {
+    scene.remove(item.mesh);
+  });
+  detachedParts.length = 0;
+  
+  // Воссоздаем детали на машине
+  car.remove(carParts.frontBumper); carParts.frontBumper = box(car,1.7,.13,.35,dark,0,.58,1.65);
+  car.remove(carParts.rearBumper);  carParts.rearBumper = box(car,1.7,.13,.35,dark,0,.58,-1.65);
+  if (carParts.leftHeadlight) car.remove(carParts.leftHeadlight);
+  carParts.leftHeadlight = new THREE.Mesh(new THREE.BoxGeometry(.35,.2,.06),warm); carParts.leftHeadlight.position.set(-.58,.88,1.88); car.add(carParts.leftHeadlight);
+  if (carParts.rightHeadlight) car.remove(carParts.rightHeadlight);
+  carParts.rightHeadlight = new THREE.Mesh(new THREE.BoxGeometry(.35,.2,.06),warm); carParts.rightHeadlight.position.set(.58,.88,1.88); car.add(carParts.rightHeadlight);
+
+  carHP = 100;
+  message('🛠️ Машина полностью отремонтирована!');
+}
+
+addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
+  if(e.code==='KeyC'&&!e.repeat){third=!third;message(third?'Камера: снаружи':'Камера: из салона');}
+  if(e.code==='KeyR'&&!e.repeat){speed=0;steer=0;yaw=0;travel=0;car.position.set(0,0,0);message('Машина сброшена на дорогу');}
+  if(e.code==='KeyT'&&!e.repeat){triggerDamage();} // Нажми T для симуляции удара
+  if(e.code==='KeyE'&&!e.repeat){repairCar();}   // Нажми E для ремонта (на стопе)
+});
 addEventListener('keyup',e=>keys[e.code]=false);
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
-function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.04);last=now;
+
+function animate(now){
+ requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.04);last=now;
  const gas=keys.KeyW||keys.ArrowUp,reverse=keys.KeyS||keys.ArrowDown,brake=keys.Space,turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0);
  if(gas&&fuel>0)speed+=7.5*dt;
  if(reverse)speed-=speed>1?14*dt:4.2*dt;
@@ -124,13 +210,18 @@ function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last
  steer=THREE.MathUtils.damp(steer,turn,.9,dt);
  const steerStrength=Math.min(Math.abs(speed)/12,1);
  yaw+=steer*steerStrength*1.15*dt*Math.sign(speed||1);
- // Keep the car on the road; gentle verge resistance
+ 
  const nextX=car.position.x+Math.sin(yaw)*Math.min(Math.abs(speed),18)*dt*.45;
- if(Math.abs(nextX)<3.65)car.position.x=nextX;else{speed*=Math.max(0,1-3.2*dt);car.position.x=THREE.MathUtils.clamp(nextX,-3.65,3.65);}
+ if(Math.abs(nextX)<3.65)car.position.x=nextX;else{
+   speed*=Math.max(0,1-3.2*dt);
+   car.position.x=THREE.MathUtils.clamp(nextX,-3.65,3.65);
+   // Столкновение с обочиной на скорости наносит урон!
+   if(Math.abs(speed) > 12 && Math.random() < 0.05) triggerDamage();
+ }
  car.rotation.y=yaw;travel+=Math.abs(speed)*dt;
  fuel=Math.max(0,fuel-Math.abs(speed)*dt*.00085);
  wheelGroup.rotation.z=-steer*.55;steering2.rotation.z=-steer*.55;
- // Road and scenery flow toward the car while W is held, giving a clear forward-motion cue.
+ 
  const flow=speed*dt*1.7;
  scene.children.forEach(o=>{
    if(o.userData.scenery){o.position.z+=flow;if(o.position.z>14)o.position.z-=330;}
@@ -138,18 +229,37 @@ function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last
  road.position.z+=flow;if(road.position.z>20)road.position.z-=340;
  scene.children.forEach(o=>{if(o.userData.road&&o!==road){o.position.z+=flow;if(o.position.z>14)o.position.z-=340;}});
  ground.position.z+=flow*.15;if(ground.position.z>0)ground.position.z=-100;
- // Camera follows road position; mild suspension bounce grows with speed.
+
+ // Обновление отлетевших деталей (физика падения на дорогу)
+ for(let i = detachedParts.length - 1; i >= 0; i--){
+   const item = detachedParts[i];
+   item.mesh.position.addScaledVector(item.velocity, dt);
+   item.mesh.rotation.x += item.rotSpeed.x * dt;
+   item.mesh.rotation.y += item.rotSpeed.y * dt;
+   // Гравитация
+   item.velocity.y -= 9.8 * dt;
+   // Остановка об землю
+   if(item.mesh.position.y < 0.1) {
+     item.mesh.position.y = 0.1;
+     item.velocity.set(0,0,0);
+     item.rotSpeed.set(0,0,0);
+   }
+   // Детали тоже движутся вместе с дорогой навстречу игроку, если он едет
+   item.mesh.position.z += flow;
+ }
+
  const bounce=Math.sin(now*.018)*Math.min(Math.abs(speed)/150,.035);
  if(third){camera.position.set(car.position.x-Math.sin(yaw)*7,4.2+bounce,5.8+Math.cos(yaw)*1.5);camera.lookAt(car.position.x,1,-8);cockpit.visible=false;}
  else{camera.position.set(car.position.x,1.65+bounce,3.8);camera.rotation.set(0,yaw,0);cockpit.visible=true;}
- // car body is shown in external view; cockpit geometry stays camera-local in first person
  car.visible=third;
+ 
  document.getElementById('speed').textContent=Math.round(Math.abs(speed)*3.6);
  document.getElementById('fuel').textContent=Math.round(fuel);
+ document.getElementById('hp').textContent=Math.round(carHP);
  document.getElementById('dist').textContent=(travel/1000).toFixed(1);
  document.getElementById('gear').textContent= speed<-.3?'R':Math.abs(speed)<.5?'N':Math.abs(speed)<9?'1':Math.abs(speed)<17?'2':'3';
  msgTimer-=dt;if(msgTimer<=0)document.getElementById('message').style.opacity=0;
- // Small road motion illusion
+ 
  renderer.render(scene,camera);
 }
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
